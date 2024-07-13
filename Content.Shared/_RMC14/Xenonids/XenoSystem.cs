@@ -2,7 +2,9 @@
 using Content.Shared._RMC14.Damage;
 using Content.Shared._RMC14.Marines;
 using Content.Shared._RMC14.Medical.Scanner;
+using Content.Shared._RMC14.NightVision;
 using Content.Shared._RMC14.Vendors;
+using Content.Shared._RMC14.Xenonids.Construction.Nest;
 using Content.Shared._RMC14.Xenonids.Evolution;
 using Content.Shared._RMC14.Xenonids.Hive;
 using Content.Shared._RMC14.Xenonids.Pheromones;
@@ -38,6 +40,7 @@ public sealed class XenoSystem : EntitySystem
     [Dependency] private readonly MobStateSystem _mobState = default!;
     [Dependency] private readonly MobThresholdSystem _mobThresholds = default!;
     [Dependency] private readonly MovementSpeedModifierSystem _movementSpeed = default!;
+    [Dependency] private readonly SharedNightVisionSystem _nightVision = default!;
     [Dependency] private readonly StandingStateSystem _standing = default!;
     [Dependency] private readonly IGameTiming _timing = default!;
     [Dependency] private readonly SharedTransformSystem _transform = default!;
@@ -48,6 +51,7 @@ public sealed class XenoSystem : EntitySystem
     private EntityQuery<MarineComponent> _marineQuery;
     private EntityQuery<MobStateComponent> _mobStateQuery;
     private EntityQuery<MobThresholdsComponent> _mobThresholdsQuery;
+    private EntityQuery<XenoNestedComponent> _xenoNestedQuery;
     private EntityQuery<XenoPlasmaComponent> _xenoPlasmaQuery;
     private EntityQuery<XenoRecoveryPheromonesComponent> _xenoRecoveryQuery;
 
@@ -64,12 +68,14 @@ public sealed class XenoSystem : EntitySystem
         _marineQuery = GetEntityQuery<MarineComponent>();
         _mobStateQuery = GetEntityQuery<MobStateComponent>();
         _mobThresholdsQuery = GetEntityQuery<MobThresholdsComponent>();
+        _xenoNestedQuery = GetEntityQuery<XenoNestedComponent>();
         _xenoPlasmaQuery = GetEntityQuery<XenoPlasmaComponent>();
         _xenoRecoveryQuery = GetEntityQuery<XenoRecoveryPheromonesComponent>();
 
         SubscribeLocalEvent<XenoComponent, MapInitEvent>(OnXenoMapInit);
         SubscribeLocalEvent<XenoComponent, GetAccessTagsEvent>(OnXenoGetAdditionalAccess);
-        SubscribeLocalEvent<XenoComponent, NewXenoEvolvedComponent>(OnNewXenoEvolved);
+        SubscribeLocalEvent<XenoComponent, NewXenoEvolvedEvent>(OnNewXenoEvolved);
+        SubscribeLocalEvent<XenoComponent, XenoDevolvedEvent>(OnXenoDevolved);
         SubscribeLocalEvent<XenoComponent, HealthScannerAttemptTargetEvent>(OnXenoHealthScannerAttemptTarget);
         SubscribeLocalEvent<XenoComponent, GetDefaultRadioChannelEvent>(OnXenoGetDefaultRadioChannel);
         SubscribeLocalEvent<XenoComponent, AttackAttemptEvent>(OnXenoAttackAttempt);
@@ -108,7 +114,13 @@ public sealed class XenoSystem : EntitySystem
         args.Tags.UnionWith(xeno.Comp.AccessLevels);
     }
 
-    private void OnNewXenoEvolved(Entity<XenoComponent> newXeno, ref NewXenoEvolvedComponent args)
+    private void OnNewXenoEvolved(Entity<XenoComponent> newXeno, ref NewXenoEvolvedEvent args)
+    {
+        var oldRotation = _transform.GetWorldRotation(args.OldXeno);
+        _transform.SetWorldRotation(newXeno, oldRotation);
+    }
+
+    private void OnXenoDevolved(Entity<XenoComponent> newXeno, ref XenoDevolvedEvent args)
     {
         var oldRotation = _transform.GetWorldRotation(args.OldXeno);
         _transform.SetWorldRotation(newXeno, oldRotation);
@@ -209,6 +221,8 @@ public sealed class XenoSystem : EntitySystem
 
         xeno.Comp.Hive = hive;
         Dirty(xeno, xeno.Comp);
+
+        _nightVision.SetSeeThroughContainers(xeno.Owner, hiveEnt.Comp.SeeThroughContainers);
     }
 
     public void SetSameHive(Entity<XenoComponent?> to, Entity<XenoComponent?> from)
@@ -281,6 +295,21 @@ public sealed class XenoSystem : EntitySystem
         }
 
         return xenoOne.Comp.Hive == xenoTwo.Comp.Hive;
+    }
+
+    public bool CanAbilityAttackTarget(EntityUid xeno, EntityUid target)
+    {
+        // TODO RMC14 xenos of the same hive
+        if (xeno == target)
+            return false;
+
+        if (_mobState.IsDead(target))
+            return false;
+
+        if (_xenoNestedQuery.HasComp(target))
+            return false;
+
+        return HasComp<MarineComponent>(target);
     }
 
     public override void Update(float frameTime)

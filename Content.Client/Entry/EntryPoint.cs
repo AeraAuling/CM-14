@@ -1,6 +1,9 @@
+using Content.Client._RMC14.Explosion;
+using Content.Client._RMC14.Xenonids.Screech;
 using Content.Client.Administration.Managers;
 using Content.Client.Changelog;
 using Content.Client.Chat.Managers;
+using Content.Client.DebugMon;
 using Content.Client.Eui;
 using Content.Client.Fullscreen;
 using Content.Client.GhostKick;
@@ -33,6 +36,7 @@ using Robust.Shared.Configuration;
 using Robust.Shared.ContentPack;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Replays;
+using Robust.Shared.Timing;
 
 namespace Content.Client.Entry
 {
@@ -68,6 +72,7 @@ namespace Content.Client.Entry
         [Dependency] private readonly IReplayLoadManager _replayLoad = default!;
         [Dependency] private readonly ILogManager _logManager = default!;
         [Dependency] private readonly ContentReplayPlaybackManager _replayMan = default!;
+        [Dependency] private readonly DebugMonitorManager _debugMonitorManager = default!;
 
         public override void Init()
         {
@@ -148,6 +153,8 @@ namespace Content.Client.Entry
             _parallaxManager.LoadDefaultParallax();
 
             _overlayManager.AddOverlay(new SingularityOverlay());
+            _overlayManager.AddOverlay(new RMCExplosionShockWaveOverlay());
+            _overlayManager.AddOverlay(new RMCXenoScreechShockWaveOverlay());
             _overlayManager.AddOverlay(new RadiationPulseOverlay());
             _chatManager.Initialize();
             _clientPreferencesManager.Initialize();
@@ -203,6 +210,14 @@ namespace Content.Client.Entry
             else
             {
                 _stateManager.RequestStateChange<MainScreen>();
+            }
+        }
+
+        public override void Update(ModUpdateLevel level, FrameEventArgs frameEventArgs)
+        {
+            if (level == ModUpdateLevel.FramePreEngine)
+            {
+                _debugMonitorManager.FrameUpdate();
             }
         }
     }

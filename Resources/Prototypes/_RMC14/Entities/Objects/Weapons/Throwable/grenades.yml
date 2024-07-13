@@ -37,6 +37,7 @@
     tags:
     - Grenade
     - LauncherCompatibleGrenade
+    - RMCGrenadeM40
   - type: Ammo
   - type: CMExplosionEffect
   - type: CMVocalizeTrigger
@@ -62,6 +63,7 @@
     tags:
     - Grenade
     - LauncherCompatibleGrenade
+    - RMCGrenadeM40
   - type: Ammo
 
 - type: entity
@@ -81,6 +83,7 @@
     fillPrototype: CMProjectileShrapnel
     maxGrenadesCount: 48
     grenadeType: enum.GrenadeType.Shoot
+    triggerGrenades: false
   - type: ContainerContainer
     containers:
       cluster-payload: !type:Container
@@ -88,6 +91,7 @@
     tags:
     - Grenade
     - LauncherCompatibleGrenade
+    - RMCGrenadeM40
   - type: Ammo
   - type: ClusterLimitHits
   - type: CMExplosionEffect
@@ -104,6 +108,13 @@
     state: grenade
   - type: TimedDespawn
     lifetime: 0.6
+  
+- type: entity
+  id: RMCExplosionEffectGrenadeShockWave
+  components:
+  - type: TimedDespawn
+    lifetime: 0.5
+  - type: RMCExplosionShockWave
 
 - type: entity
   id: CMExplosionEffectShrapnel1
@@ -140,3 +151,6 @@
   components:
   - type: Sprite
     state: shrapnel_bright2
+
+- type: Tag
+  id: RMCGrenadeM40

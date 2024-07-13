@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using Content.Client._RMC14.NamedItems;
 using Content.Client.Humanoid;
 using Content.Client.Lobby.UI.Loadouts;
 using Content.Client.Lobby.UI.Roles;
@@ -8,6 +9,8 @@ using Content.Client.Message;
 using Content.Client.Players.PlayTimeTracking;
 using Content.Client.Stylesheets;
 using Content.Client.UserInterface.Systems.Guidebook;
+using Content.Shared._RMC14.LinkAccount;
+using Content.Shared._RMC14.NamedItems;
 using Content.Shared._RMC14.Prototypes;
 using Content.Shared.CCVar;
 using Content.Shared.Clothing;
@@ -426,6 +429,27 @@ namespace Content.Client.Lobby.UI
 
             SpeciesInfoButton.OnPressed += OnSpeciesInfoButtonPressed;
 
+            // RMC14
+            void SetItemName(RMCNamedItemType type, string itemName)
+            {
+                Profile = Profile?.WithNamedItems(new SharedRMCNamedItems
+                {
+                    PrimaryGunName = type == RMCNamedItemType.PrimaryGun ? itemName : Profile.NamedItems.PrimaryGunName,
+                    SidearmName = type == RMCNamedItemType.Sidearm ? itemName : Profile.NamedItems.SidearmName,
+                    HelmetName = type == RMCNamedItemType.Helmet ? itemName : Profile.NamedItems.HelmetName,
+                    ArmorName = type == RMCNamedItemType.Armor ? itemName : Profile.NamedItems.ArmorName,
+                });
+                SetDirty();
+            }
+
+            var namedItems = UserInterfaceManager.GetUIController<NamedItemsUIController>();
+            TabContainer.SetTabTitle(5, Loc.GetString("rmc-ui-named-items"));
+            TabContainer.SetTabVisible(5, namedItems.Available);
+            NamedItems.PrimaryGun.OnTextChanged += args => SetItemName(RMCNamedItemType.PrimaryGun, args.Text);
+            NamedItems.Sidearm.OnTextChanged += args => SetItemName(RMCNamedItemType.Sidearm, args.Text);
+            NamedItems.Helmet.OnTextChanged += args => SetItemName(RMCNamedItemType.Helmet, args.Text);
+            NamedItems.Armor.OnTextChanged += args => SetItemName(RMCNamedItemType.Armor, args.Text);
+
             UpdateSpeciesGuidebookIcon();
             ReloadPreview();
             IsDirty = false;
@@ -482,10 +506,10 @@ namespace Content.Client.Lobby.UI
                 return;
             }
 
-            //Setup model
-            Dictionary<string, List<string>> model = new();
+            // Setup model
+            Dictionary<string, List<string>> traitGroups = new();
             List<string> defaultTraits = new();
-            model.Add("default", defaultTraits);
+            traitGroups.Add(TraitCategoryPrototype.Default, defaultTraits);
 
             foreach (var trait in traits)
             {
@@ -495,18 +519,19 @@ namespace Content.Client.Lobby.UI
                     continue;
                 }
 
-                if (!model.ContainsKey(trait.Category))
-                {
-                    model.Add(trait.Category, new());
-                }
-                model[trait.Category].Add(trait.ID);
+                if (!_prototypeManager.HasIndex(trait.Category))
+                    continue;
+
+                var group = traitGroups.GetOrNew(trait.Category);
+                group.Add(trait.ID);
             }
 
-            //Create UI view from model
-            foreach (var (categoryId, traitId) in model)
+            // Create UI view from model
+            foreach (var (categoryId, categoryTraits) in traitGroups)
             {
                 TraitCategoryPrototype? category = null;
-                if (categoryId != "default")
+
+                if (categoryId != TraitCategoryPrototype.Default)
                 {
                     category = _prototypeManager.Index<TraitCategoryPrototype>(categoryId);
                     // Label
@@ -521,7 +546,7 @@ namespace Content.Client.Lobby.UI
                 List<TraitPreferenceSelector?> selectors = new();
                 var selectionCount = 0;
 
-                foreach (var traitProto in traitId)
+                foreach (var traitProto in categoryTraits)
                 {
                     var trait = _prototypeManager.Index<TraitPrototype>(traitProto);
                     var selector = new TraitPreferenceSelector(trait);
@@ -532,7 +557,15 @@ namespace Content.Client.Lobby.UI
 
                     selector.PreferenceChanged += preference =>
                     {
-                        Profile = Profile?.WithTraitPreference(trait.ID, categoryId, preference);
+                        if (preference)
+                        {
+                            Profile = Profile?.WithTraitPreference(trait.ID, _prototypeManager);
+                        }
+                        else
+                        {
+                            Profile = Profile?.WithoutTraitPreference(trait.ID, _prototypeManager);
+                        }
+
                         SetDirty();
                         RefreshTraits(); // If too many traits are selected, they will be reset to the real value.
                     };
@@ -680,6 +713,11 @@ namespace Content.Client.Lobby.UI
             _loadoutWindow?.Dispose();
         }
 
+        public void RefreshRMC(SharedRMCPatronTier? tier)
+        {
+            TabContainer.SetTabVisible(5, tier is { NamedItems: true });
+        }
+
         /// <summary>
         /// Reloads the entire dummy entity for preview.
         /// </summary>
@@ -731,6 +769,7 @@ namespace Content.Client.Lobby.UI
             UpdateHairPickers();
             UpdateCMarkingsHair();
             UpdateCMarkingsFacialHair();
+            UpdateNamedItems();
 
             RefreshAntags();
             RefreshJobs();
@@ -1186,7 +1225,7 @@ namespace Content.Client.Lobby.UI
             SetDirty();
         }
 
-        private bool IsDirty
+        public bool IsDirty
         {
             get => _isDirty;
             set
@@ -1326,6 +1365,9 @@ namespace Content.Client.Lobby.UI
 
         public void UpdateSpeciesGuidebookIcon()
         {
+            if (!_cfgManager.GetCVar(CCVars.GuidebookShowEditorSpeciesButton))
+                return;
+
             SpeciesInfoButton.StyleClasses.Clear();
 
             var species = Profile?.Species;
@@ -1481,6 +1523,14 @@ namespace Content.Client.Lobby.UI
 
             Markings.CurrentEyeColor = Profile.Appearance.EyeColor;
             EyeColorPicker.SetData(Profile.Appearance.EyeColor);
+        }
+
+        private void UpdateNamedItems()
+        {
+            NamedItems.PrimaryGun.Text = Profile?.NamedItems.PrimaryGunName ?? string.Empty;
+            NamedItems.Sidearm.Text = Profile?.NamedItems.SidearmName ?? string.Empty;
+            NamedItems.Helmet.Text = Profile?.NamedItems.HelmetName ?? string.Empty;
+            NamedItems.Armor.Text = Profile?.NamedItems.ArmorName ?? string.Empty;
         }
 
         private void UpdateSaveButton()

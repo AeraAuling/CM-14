@@ -236,7 +236,7 @@ namespace Content.Shared.CCVar
         /// If roles should be restricted based on time.
         /// </summary>
         public static readonly CVarDef<bool>
-            GameRoleTimers = CVarDef.Create("game.role_timers", false, CVar.SERVER | CVar.REPLICATED);
+            GameRoleTimers = CVarDef.Create("game.role_timers", true, CVar.SERVER | CVar.REPLICATED);
 
         /// <summary>
         /// Override default role requirements using a <see cref="JobRequirementOverridePrototype"/>
@@ -439,6 +439,16 @@ namespace Content.Shared.CCVar
         /// </summary>
         public static readonly CVarDef<bool> RoundEndPVSOverrides =
             CVarDef.Create("game.round_end_pvs_overrides", true, CVar.SERVERONLY);
+
+        /// <summary>
+        /// If true, players can place objects onto tabletop games like chess boards.
+        /// </summary>
+        /// <remarks>
+        /// This feature is currently highly abusable and can easily be used to crash the server,
+        /// so it's off by default.
+        /// </remarks>
+        public static readonly CVarDef<bool> GameTabletopPlace =
+            CVarDef.Create("game.tabletop_place", false, CVar.SERVERONLY);
 
         /*
          * Discord
@@ -833,6 +843,15 @@ namespace Content.Shared.CCVar
             CVarDef.Create("admin.server_ban_erase_player", false, CVar.ARCHIVE | CVar.SERVER | CVar.REPLICATED);
 
         /// <summary>
+        ///     Minimum players sharing a connection required to create an alert. -1 to disable the alert.
+        /// </summary>
+        /// <remarks>
+        ///     If you set this to 0 or 1 then it will alert on every connection, so probably don't do that.
+        /// </remarks>
+        public static readonly CVarDef<int> AdminAlertMinPlayersSharingConnection =
+            CVarDef.Create("admin.alert.min_players_sharing_connection", -1, CVar.SERVERONLY);
+
+        /// <summary>
         ///     Minimum explosion intensity to create an admin alert message. -1 to disable the alert.
         /// </summary>
         public static readonly CVarDef<int> AdminAlertExplosionMinIntensity =
@@ -851,7 +870,7 @@ namespace Content.Shared.CCVar
             CVarDef.Create("admin.show_pii_onban", false, CVar.SERVERONLY);
 
         /// <summary>
-        /// If an admin joins a round by reading up or using the late join button, automatically
+        /// If an admin joins a round by readying up or using the late join button, automatically
         /// de-admin them.
         /// </summary>
         public static readonly CVarDef<bool> AdminDeadminOnJoin =
@@ -1345,7 +1364,7 @@ namespace Content.Shared.CCVar
         ///     Config for when the restart vote should be allowed to be called based on percentage of ghosts.
         ///
         public static readonly CVarDef<int> VoteRestartGhostPercentage =
-            CVarDef.Create("vote.restart_ghost_percentage", 55, CVar.SERVERONLY);
+            CVarDef.Create("vote.restart_ghost_percentage", 75, CVar.SERVERONLY);
 
         /// <summary>
         ///     See vote.enabled, but specific to preset votes
@@ -1418,7 +1437,7 @@ namespace Content.Shared.CCVar
         /// Should we pre-load all of the procgen atlasses.
         /// </summary>
         public static readonly CVarDef<bool> ProcgenPreload =
-            CVarDef.Create("procgen.preload", true, CVar.SERVERONLY);
+            CVarDef.Create("procgen.preload", false, CVar.SERVERONLY);
 
         /*
          * Shuttles
@@ -1486,7 +1505,7 @@ namespace Content.Shared.CCVar
         /// Whether to automatically preloading grids by GridPreloaderSystem
         /// </summary>
         public static readonly CVarDef<bool> PreloadGrids =
-            CVarDef.Create("shuttle.preload_grids", true, CVar.SERVERONLY);
+            CVarDef.Create("shuttle.preload_grids", false, CVar.SERVERONLY);
 
         /// <summary>
         /// How long the warmup time before FTL start should be.
@@ -1498,7 +1517,7 @@ namespace Content.Shared.CCVar
         /// How long a shuttle spends in FTL.
         /// </summary>
         public static readonly CVarDef<float> FTLTravelTime =
-            CVarDef.Create("shuttle.travel_time", 100f, CVar.SERVERONLY);
+            CVarDef.Create("shuttle.travel_time", 70f, CVar.SERVERONLY); // TODO RMC14 100
 
         /// <summary>
         /// How long the final stage of FTL before arrival should be.
@@ -1510,7 +1529,7 @@ namespace Content.Shared.CCVar
         /// How much time needs to pass before a shuttle can FTL again.
         /// </summary>
         public static readonly CVarDef<float> FTLCooldown =
-            CVarDef.Create("shuttle.cooldown", 120f, CVar.SERVERONLY);
+            CVarDef.Create("shuttle.cooldown", 90f, CVar.SERVERONLY); // TODO RMC14 120f
 
         /// <summary>
         /// The maximum <see cref="PhysicsComponent.Mass"/> a grid can have before it becomes unable to FTL.
@@ -2159,7 +2178,7 @@ namespace Content.Shared.CCVar
          */
 
         public static readonly CVarDef<bool> GatewayGeneratorEnabled =
-            CVarDef.Create("gateway.generator_enabled", true);
+            CVarDef.Create("gateway.generator_enabled", false);
 
         // Clippy!
         public static readonly CVarDef<string> TippyEntity =
@@ -2180,5 +2199,16 @@ namespace Content.Shared.CCVar
         /// </summary>
         public static readonly CVarDef<bool> DebugPow3rDisableParallel =
             CVarDef.Create("debug.pow3r_disable_parallel", true, CVar.SERVERONLY);
+
+        /*
+         * GUIDEBOOK
+         */
+
+        /// <summary>
+        ///     Whether or not to show a button that opens the guidebook when a player changes their species,
+        ///     explaining the difference between each.
+        /// </summary>
+        public static readonly CVarDef<bool> GuidebookShowEditorSpeciesButton =
+            CVarDef.Create("guidebook.show_editor_species_button", false, CVar.SERVER | CVar.REPLICATED);
     }
 }
